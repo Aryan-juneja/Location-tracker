@@ -41,10 +41,8 @@ app.get('/', (req, res) => {
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://test1:test@cluster0.mpbwbt6.mongodb.net/Driver';
 
-mongoose.connect(MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => console.log("MongoDB connected"))
+mongoose.connect(MONGO_URI)
+  .then(() => console.log("MongoDB connected"))
   .catch(err => console.log("MongoDB connection error:", err));
 
 app.post('/routes', async (req, res) => {
@@ -99,11 +97,9 @@ io.on('connection', (socket) => {
   });
 });
 
-// For Vercel, we need to export the server
-if (process.env.NODE_ENV !== 'production') {
-  server.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-}
+// ✅ Always listen on the port (required for Render)
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 export default app;

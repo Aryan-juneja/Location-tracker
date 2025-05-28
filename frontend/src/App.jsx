@@ -153,7 +153,7 @@ function App() {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh' , width: '100vw' }}>
+    <div style={{ display: 'flex', flexDirection:'column', height: '100vh' , width: '100vw' }}>
       <div className="sidebar">
         <div className="join-section">
           <h2>📍 Real-Time Tracker</h2>
@@ -171,7 +171,7 @@ function App() {
         </div>
       </div>
 
-      <div id="map" style={{ flexGrow: 1 }}>
+      <div id="map" style={{ flexGrow: 1  }}>
         <MapContainer
           center={initialCenter}
           zoom={15}

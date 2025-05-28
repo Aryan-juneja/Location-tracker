@@ -22,7 +22,7 @@ function App() {
 
   useEffect(() => {
     // Use your actual server URL - replace with your ngrok/localtunnel URL
-    socketRef.current = io("https://beele.vercel.app", {
+    socketRef.current = io("https://location-tracker-2-ouqp.onrender.com/", {
       transports: ['websocket', 'polling'], // Enable both transports for better mobile compatibility
       timeout: 20000,
       forceNew: true

@@ -3,6 +3,16 @@ import './App.css';
 import { io } from 'socket.io-client';
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+// 🛠 Fix Leaflet marker icon path issue for Vite
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
 
 function MapCenter({ center }) {
   const map = useMap();

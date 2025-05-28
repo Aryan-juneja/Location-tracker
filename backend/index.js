@@ -1,45 +1,109 @@
 import express from 'express';
-import { createServer } from 'node:http';
-import { Server } from 'socket.io';
+import http from 'http';
+import mongoose from 'mongoose';
 import cors from 'cors';
+import { Server } from 'socket.io';
+import DriverRoute from './models/DriverRoute.js';
 
 const app = express();
+const server = http.createServer(app);
 
-// Apply CORS middleware to Express
-app.use(cors({
-  origin: 'http://localhost:5173',
-  methods: ['GET', 'POST'],
-  credentials: true
-}));
-
-const server = createServer(app);
-
-// Pass CORS config to Socket.IO
+// Updated CORS for Vercel deployment
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:5173',
+    origin: [
+      "https://*.vercel.app",
+      "http://localhost:5173",
+      "https://localhost:5173"
+    ],
     methods: ['GET', 'POST'],
     credentials: true
   }
 });
 
+app.use(cors({
+  origin: [
+    "https://*.vercel.app",
+    "http://localhost:5173",
+    "https://localhost:5173"
+  ],
+  credentials: true
+}));
+
+app.use(express.json());
+
+// Health check endpoint
 app.get('/', (req, res) => {
-  res.send("Hey there! This is a simple Socket.IO server.");
+  res.json({ message: 'Driver Tracker API is running!', timestamp: new Date() });
 });
+
+// Use environment variable for port
+const PORT = process.env.PORT || 5000;
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://test1:test@cluster0.mpbwbt6.mongodb.net/Driver';
+
+mongoose.connect(MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => console.log("MongoDB connected"))
+  .catch(err => console.log("MongoDB connection error:", err));
+
+app.post('/routes', async (req, res) => {
+  try {
+    const route = new DriverRoute(req.body);
+    await route.save();
+    res.status(201).json(route);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get('/routes', async (req, res) => {
+  try {
+    const { truckId, driverName } = req.query;
+    const filter = {};
+    if (truckId) filter.truckId = truckId;
+    if (driverName) filter.driverName = driverName;
+
+    const route = await DriverRoute.findOne(filter);
+    if (!route) return res.status(404).json({ message: "Route not found" });
+    res.json(route);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+const activeRoutes = {}; // { socketId: [{ latitude, longitude, timestamp }] }
 
 io.on('connection', (socket) => {
-  console.log('a user connected:', socket.id);
+  console.log('New client connected:', socket.id);
+  activeRoutes[socket.id] = [];
+
+  // Send current all polylines to newly connected client
+  socket.emit('all-polylines', activeRoutes);
+
+  socket.on('update-location', ({ lat, lng }) => {
+    const newLoc = { latitude: lat, longitude: lng, timestamp: new Date() };
+    if (!activeRoutes[socket.id]) {
+      activeRoutes[socket.id] = [];
+    }
+    activeRoutes[socket.id].push(newLoc);
+
+    // Broadcast updated polylines to all clients
+    io.emit('all-polylines', activeRoutes);
+  });
 
   socket.on('disconnect', () => {
-    console.log('user disconnected:', socket.id);
+    console.log('Client disconnected:', socket.id);
+    delete activeRoutes[socket.id];
+    io.emit('all-polylines', activeRoutes); // Update remaining clients
   });
-  socket.on('greet',(data)=>{
-    console.log("Received message from client:", data);
-    // You can emit a response back to the client if needed
-    socket.emit('greetResponse', { message: 'Hello from server!' });
-  })
 });
 
-server.listen(3000, () => {
-  console.log('server running at http://localhost:3000');
-});
+// For Vercel, we need to export the server
+if (process.env.NODE_ENV !== 'production') {
+  server.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
